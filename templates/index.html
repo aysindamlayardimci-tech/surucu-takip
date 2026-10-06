@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sürücü Takip Sistemi (Web/Mobil)</title>
+    <!-- MediaPipe ve TailwindCSSCDN yüklemeleri -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex flex-col items-center justify-between p-4">
+
+    <!-- Header -->
+    <header class="w-full max-w-md text-center py-2">
+        <h1 class="text-xl font-bold text-blue-400">Sürücü Uyku & Dikkat Takibi</h1>
+    </header>
+
+    <!-- Kamera Alanı -->
+    <div class="relative w-full max-w-md bg-black rounded-2xl overflow-hidden shadow-2xl aspect-[4/3] flex items-center justify-center">
+        <video id="input_video" class="hidden" playsinline></video>
+        <canvas id="output_canvas" class="w-full h-full object-cover transform -scale-x-100"></canvas>
+        
+        <!-- Durum Bildirim Rozeti -->
+        <div id="status_badge" class="absolute top-4 left-4 bg-green-500/80 backdrop-blur-md text-white font-bold px-4 py-1.5 rounded-full text-sm">
+            SİSTEM AKTİF
+        </div>
+    </div>
+
+    <!-- Kontrol Paneli -->
+    <div class="w-full max-w-md bg-slate-800/80 backdrop-blur-md p-4 rounded-2xl space-y-4 my-2 border border-slate-700">
+        <div>
+            <div class="flex justify-between text-sm mb-1">
+                <span class="text-slate-300">Göz Açıklık Eşiği</span>
+                <span id="esik_val" class="font-bold text-blue-400">0.20</span>
+            </div>
+            <input type="range" id="esik_slider" min="0.10" max="0.35" step="0.01" value="0.20" class="w-full accent-blue-500">
+        </div>
+
+        <div>
+            <div class="flex justify-between text-sm mb-1">
+                <span class="text-slate-300">Alarm Tolerans Süresi</span>
+                <span id="sure_val" class="font-bold text-blue-400">2 sn</span>
+            </div>
+            <div class="grid grid-cols-3 gap-2">
+                <button onclick="setSure(1)" class="sure-btn bg-slate-700 hover:bg-blue-600 py-1.5 rounded-lg text-sm font-semibold transition">1s</button>
+                <button onclick="setSure(2)" class="sure-btn bg-blue-600 py-1.5 rounded-lg text-sm font-semibold transition">2s</button>
+                <button onclick="setSure(3)" class="sure-btn bg-slate-700 hover:bg-blue-600 py-1.5 rounded-lg text-sm font-semibold transition">3s</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gizli Ses Dosyası (Web Audio API fallback için) -->
+    <audio id="alarm_audio" loop preload="auto">
+        <source src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg" type="audio/ogg">
+    </audio>
+
+    <script>
+        const videoElement = document.getElementById('input_video');
+        const canvasElement = document.getElementById('output_canvas');
+        const canvasCtx = canvasElement.getContext('2d');
+        const statusBadge = document.getElementById('status_badge');
+        const alarmAudio = document.getElementById('alarm_audio');
+        const esikSlider = document.getElementById('esik_slider');
+        const esikVal = document.getElementById('esik_val');
+
+        let alarmSure = 2;
+        let gozKapaliBaslangic = null;
+        let isAlarmPlaying = false;
+
+        esikSlider.oninput = (e) => esikVal.innerText = e.target.value;
+
+        function setSure(sec) {
+            alarmSure = sec;
+            document.getElementById('sure_val').innerText = sec + " sn";
+        }
+
+        // Öklid Mesafesi
+        function distance(p1, p2) {
+            return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+        }
+
+        // EAR (Eye Aspect Ratio) Hesaplama
+        function getEAR(landmarks, ust, alt, sol, sag) {
+            const dikey = distance(landmarks[ust], landmarks[alt]);
+            const yatay = distance(landmarks[sol], landmarks[sag]);
+            return dikey / yatay;
+        }
+
+        function onResults(results) {
+            canvasCtx.save();
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+
+            if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+                const landmarks = results.multiFaceLandmarks[0];
+
+                // Göz landmark indeksleri
+                const solEAR = getEAR(landmarks, 159, 145, 33, 133);
+                const sagEAR = getEAR(landmarks, 386, 374, 362, 263);
+                const ortEAR = (solEAR + sagEAR) / 2;
+
+                const esik = parseFloat(esikSlider.value);
+
+                if (ortEAR < esik) {
+                    if (!gozKapaliBaslangic) gozKapaliBaslangic = Date.now();
+                    const gecenSaniye = (Date.now() - gozKapaliBaslangic) / 1000;
+
+                    if (gecenSaniye >= alarmSure) {
+                        statusBadge.innerText = "UYKU ALGILANDI!";
+                        statusBadge.className = "absolute top-4 left-4 bg-red-600 animate-bounce text-white font-bold px-4 py-1.5 rounded-full text-sm";
+                        triggerAlarm(true);
+                    } else {
+                        statusBadge.innerText = `Gözler Kapalı: ${gecenSaniye.toFixed(1)}s`;
+                        statusBadge.className = "absolute top-4 left-4 bg-yellow-500 text-black font-bold px-4 py-1.5 rounded-full text-sm";
+                    }
+                } else {
+                    gozKapaliBaslangic = null;
+                    statusBadge.innerText = "UYANIK";
+                    statusBadge.className = "absolute top-4 left-4 bg-green-500 text-white font-bold px-4 py-1.5 rounded-full text-sm";
+                    triggerAlarm(false);
+                }
+            }
+            canvasCtx.restore();
+        }
+
+        function triggerAlarm(play) {
+            if (play && !isAlarmPlaying) {
+                alarmAudio.play().catch(e => console.log("Ses çalma izni gerekli"));
+                isAlarmPlaying = true;
+            } else if (!play && isAlarmPlaying) {
+                alarmAudio.pause();
+                alarmAudio.currentTime = 0;
+                isAlarmPlaying = false;
+            }
+        }
+
+        const faceMesh = new FaceMesh({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+        });
+
+        faceMesh.setOptions({
+            maxNumFaces: 1,
+            refineLandmarks: true,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        });
+
+        faceMesh.onResults(onResults);
+
+        const camera = new Camera(videoElement, {
+            onFrame: async () => {
+                await faceMesh.send({ image: videoElement });
+            },
+            width: 640,
+            height: 480
+        });
+
+        // iPhone Safari için dokunmayla ses yetkisi alma ve kamerayı başlatma
+        document.body.addEventListener('click', () => {
+            alarmAudio.play().then(() => alarmAudio.pause()).catch(() => {});
+        }, { once: true });
+
+        camera.start();
+    </script>
+</body>
+</html>
