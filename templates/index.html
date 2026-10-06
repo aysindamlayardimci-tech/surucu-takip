@@ -51,7 +51,9 @@
     </div>
 
     <!-- Gizli Ses Dosyası (Web Audio API fallback için) -->
-   <audio id="alarmSound" src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg" preload="auto"></audio>
+    <audio id="alarm_audio" loop preload="auto">
+        <source src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg" type="audio/ogg">
+    </audio>
 
     <script>
         const videoElement = document.getElementById('input_video');
