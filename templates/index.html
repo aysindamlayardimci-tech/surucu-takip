@@ -1,17 +1,12 @@
-
 <!DOCTYPE html>
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0b1020">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sürücü Takip Sistemi</title>
 
-  <!-- Kamera ve yüz algılama -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
-
-  <!-- Telefon nesnesi algılama -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
 
@@ -20,45 +15,32 @@
 
     body {
       margin: 0;
-      background: #0b1020;
-      color: #edf2ff;
       font-family: Arial, sans-serif;
-    }
-
-    button, input { font: inherit; }
-
-    .container {
-      width: min(1120px, 94%);
-      margin: auto;
-      padding: 25px 0;
+      color: #edf2ff;
+      background: #0b1020;
     }
 
     header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 15px;
-      flex-wrap: wrap;
-      margin-bottom: 24px;
+      padding: 22px 16px;
+      text-align: center;
+      background: #111a31;
+      border-bottom: 1px solid #283553;
     }
 
-    h1 { font-size: 29px; margin: 0; }
-    h2 { font-size: 19px; margin-top: 0; }
-    h3 { font-size: 15px; }
-
-    p { line-height: 1.5; }
-
-    .muted {
-      color: #a7b4cc;
-      font-size: 13px;
+    header h1 {
+      margin: 0 0 8px;
+      font-size: clamp(23px, 4vw, 34px);
     }
 
-    .panel {
-      min-width: 0;
-      background: #151e32;
-      border: 1px solid #293650;
-      border-radius: 17px;
-      padding: 20px;
+    header p {
+      margin: 0;
+      color: #aab7d4;
+    }
+
+    main {
+      width: min(1100px, 100%);
+      margin: auto;
+      padding: 18px;
     }
 
     .layout {
@@ -67,734 +49,553 @@
       gap: 18px;
     }
 
-    .camera {
+    .panel {
+      background: #131c32;
+      border: 1px solid #293652;
+      border-radius: 16px;
+      padding: 18px;
+      margin-bottom: 18px;
+      min-width: 0;
+    }
+
+    h2 {
+      margin: 0 0 15px;
+      font-size: 19px;
+    }
+
+    .camera-box {
       position: relative;
       width: 100%;
-      aspect-ratio: 4 / 3;
-      background: #030712;
       overflow: hidden;
-      border: 1px solid #334155;
-      border-radius: 14px;
+      background: #050812;
+      border-radius: 12px;
+      aspect-ratio: 4 / 3;
     }
 
-    #video { display: none; }
-
-    #canvas {
+    #output {
       width: 100%;
       height: 100%;
-      display: block;
       object-fit: contain;
-      transform: scaleX(-1);
+      display: block;
     }
 
-    #placeholder {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      padding: 20px;
-      color: #a7b4cc;
+    #video {
+      display: none;
     }
+
+    .status {
+      padding: 12px;
+      margin-top: 12px;
+      border-radius: 10px;
+      background: #202c45;
+      overflow-wrap: anywhere;
+    }
+
+    .status.good { color: #86efac; }
+    .status.warn { color: #fcd34d; }
+    .status.bad { color: #fca5a5; }
 
     .buttons {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
+      display: flex;
+      flex-wrap: wrap;
       gap: 10px;
       margin-top: 14px;
     }
 
     button, .file-label {
-      display: inline-block;
-      width: 100%;
-      padding: 12px;
+      cursor: pointer;
       border: 0;
       border-radius: 10px;
-      text-align: center;
+      padding: 12px 16px;
       font-size: 14px;
       font-weight: bold;
-      cursor: pointer;
+    }
+
+    .primary {
+      background: #4f7cff;
+      color: white;
+    }
+
+    .secondary {
+      background: #293652;
+      color: #edf2ff;
     }
 
     button:disabled {
-      opacity: .45;
+      opacity: .5;
       cursor: not-allowed;
-    }
-
-    .primary { background: #3b82f6; color: white; }
-    .secondary, .file-label { background: #293650; color: white; }
-    .danger { background: #991b1b; color: white; }
-
-    .status {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: #202b41;
-      border-radius: 20px;
-      padding: 10px 13px;
-      font-size: 13px;
-    }
-
-    .dot {
-      width: 9px;
-      height: 9px;
-      border-radius: 50%;
-      background: #64748b;
-    }
-
-    .metrics {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
     }
 
     .metric {
       padding: 13px;
-      background: #0d1527;
-      border: 1px solid #293650;
-      border-radius: 12px;
-      min-width: 0;
+      border-radius: 10px;
+      background: #202c45;
+      margin-bottom: 10px;
     }
 
-    .metric-label {
-      color: #a7b4cc;
-      font-size: 12px;
+    .metric span {
+      display: block;
+      color: #aab7d4;
+      font-size: 13px;
+      margin-bottom: 5px;
     }
 
-    .metric-value {
+    .metric strong {
       font-size: 16px;
-      font-weight: bold;
-      margin-top: 8px;
       overflow-wrap: anywhere;
     }
 
-    .section {
-      border-top: 1px solid #293650;
-      margin-top: 20px;
-      padding-top: 18px;
-    }
-
     .settings-toggle {
-      margin-top: 18px;
-      background: #202b41;
-      border: 1px solid #334155;
+      width: 100%;
+      text-align: left;
+      background: #293652;
       color: white;
+      margin-bottom: 12px;
     }
 
-    .settings-content {
-      display: none;
-      margin-top: 14px;
+    .setting {
+      margin: 17px 0;
     }
 
-    .settings-content.open { display: block; }
-
-    .setting-card {
-      background: #0d1527;
-      border: 1px solid #293650;
-      border-radius: 12px;
-      padding: 15px;
-      margin-top: 12px;
-    }
-
-    label {
+    .setting label {
       display: block;
+      margin-bottom: 8px;
       font-size: 14px;
-      font-weight: bold;
-      margin-top: 12px;
     }
 
     input[type="range"] {
       width: 100%;
-      accent-color: #60a5fa;
-      margin: 12px 0 4px;
+      accent-color: #4f7cff;
     }
 
-    input[type="file"] { display: none; }
-
-    .file-label { margin-top: 12px; }
-
-    audio {
+    input[type="file"] {
       display: block;
       width: 100%;
-      margin-top: 12px;
+      max-width: 100%;
+      color: #cbd5e1;
+      font-size: 13px;
     }
 
-    .notice {
-      background: #172b48;
-      color: #cbdcf8;
-      padding: 13px;
-      border-radius: 11px;
+    .small {
+      color: #aab7d4;
       font-size: 12px;
-      line-height: 1.6;
-      margin-top: 18px;
+      line-height: 1.5;
     }
 
-    #message, #phoneStatus {
-      overflow-wrap: anywhere;
-      min-height: 20px;
+    .settings-content[hidden] {
+      display: none;
     }
 
     footer {
-      margin-top: 24px;
       text-align: center;
-      color: #8796af;
+      padding: 12px 18px 28px;
+      color: #8795b4;
       font-size: 12px;
-      line-height: 1.6;
-    }
-
-    hr {
-      border: 0;
-      border-top: 1px solid #293650;
-      margin: 18px 0;
     }
 
     @media (max-width: 760px) {
       .layout { grid-template-columns: 1fr; }
-      .container { padding: 17px 0; }
-      .panel { padding: 15px; }
-      h1 { font-size: 25px; }
-    }
-
-    @media (max-width: 360px) {
-      .metrics, .buttons { grid-template-columns: 1fr; }
+      main { padding: 12px; }
+      .panel { padding: 14px; }
+      button { flex: 1 1 auto; }
     }
   </style>
 </head>
 
 <body>
-<main class="container">
+<header>
+  <h1>🚗 Sürücü Takip Sistemi</h1>
+  <p>Göz kapanması ve cep telefonu algılama prototipi</p>
+</header>
 
-  <header>
-    <div>
-      <p style="color:#60a5fa;font-weight:bold;font-size:12px;">
-        SÜRÜŞ GÜVENLİĞİ • DENEYSEL PROTOTİP
-      </p>
-      <h1>Sürücü Takip</h1>
-      <p class="muted">Göz ve telefon kullanımını takip etmeyi deneyen sistem</p>
-    </div>
-
-    <div class="status">
-      <span class="dot" id="statusDot"></span>
-      <span id="status">Kamera kapalı</span>
-    </div>
-  </header>
-
+<main>
   <div class="layout">
+    <section>
+      <div class="panel">
+        <h2>📷 Kamera</h2>
 
-    <section class="panel">
-      <h2>Canlı kamera</h2>
-      <p class="muted">Yüzünün görünür ve ortamın yeterince aydınlık olmasına dikkat et.</p>
+        <div class="camera-box">
+          <video id="video" playsinline muted></video>
+          <canvas id="output"></canvas>
+        </div>
 
-      <div class="camera">
-        <video id="video" autoplay muted playsinline></video>
-        <canvas id="canvas"></canvas>
+        <div id="cameraStatus" class="status warn">
+          Kamera henüz başlatılmadı.
+        </div>
 
-        <div id="placeholder">
-          <div style="font-size:38px;">◉</div>
-          <strong>Kamera başlatılmadı</strong>
-          <p class="muted">Başlat düğmesine bas ve kamera izni ver.</p>
+        <div class="buttons">
+          <button id="startBtn" class="primary">Kamerayı Başlat</button>
+          <button id="stopBtn" class="secondary" disabled>Durdur</button>
         </div>
       </div>
 
-      <div class="buttons">
-        <button id="startBtn" class="primary">Kamerayı başlat</button>
-        <button id="stopBtn" class="secondary" disabled>Durdur</button>
-      </div>
+      <div class="panel">
+        <h2>📊 Anlık Durum</h2>
 
-      <p id="message" class="muted" aria-live="polite">
-        Sistem başlatılmayı bekliyor.
-      </p>
+        <div class="metric">
+          <span>Göz takibi</span>
+          <strong id="eyeValue">Bekleniyor</strong>
+        </div>
 
-      <div class="notice">
-        Telefon ve yüz algılama modellerinin yüklenmesi internet bağlantısı
-        gerektirir. Kamera görüntüsü tarayıcıda işlenir.
+        <div class="metric">
+          <span>Telefon algılama</span>
+          <strong id="phoneValue">Model yükleniyor...</strong>
+        </div>
+
+        <div id="phoneStatus" class="status warn">
+          Telefon algılama modeli yükleniyor...
+        </div>
       </div>
     </section>
 
-    <aside class="panel">
-      <h2>Takip paneli</h2>
+    <section>
+      <div class="panel">
+        <h2>⚙️ Ayarlar</h2>
+        <button id="settingsToggle" class="settings-toggle">
+          Ayarları Göster / Gizle
+        </button>
 
-      <div class="metrics">
-        <div class="metric">
-          <div class="metric-label">Yüz algılama</div>
-          <div class="metric-value" id="faceValue">Bekleniyor</div>
-        </div>
+        <div id="settingsContent" class="settings-content">
+          <h2>🔊 Uyuklama Alarmı</h2>
 
-        <div class="metric">
-          <div class="metric-label">Göz durumu</div>
-          <div class="metric-value" id="eyeValue">Bekleniyor</div>
-        </div>
+          <div class="setting">
+            <label for="eyeSoundFile">Kendi alarm sesini seç</label>
+            <input id="eyeSoundFile" type="file" accept="audio/*">
+            <p class="small">MP3, WAV veya tarayıcının desteklediği ses dosyalarını seçebilirsin.</p>
+          </div>
 
-        <div class="metric">
-          <div class="metric-label">Kapanma süresi</div>
-          <div class="metric-value" id="closedValue">0,0 sn</div>
-        </div>
+          <div class="setting">
+            <label for="eyeVolume">
+              Uyuklama alarmı ses seviyesi:
+              <span id="eyeVolumeText">80%</span>
+            </label>
+            <input id="eyeVolume" type="range" min="0" max="100" value="80">
+          </div>
 
-        <div class="metric">
-          <div class="metric-label">Telefon</div>
-          <div class="metric-value" id="phoneValue">Bekleniyor</div>
-        </div>
+          <div class="setting">
+            <label for="closureDelay">
+              Alarm öncesi göz kapanma süresi:
+              <span id="closureDelayText">0,7 saniye</span>
+            </label>
+            <input id="closureDelay" type="range" min="500" max="2000" step="100" value="700">
+          </div>
 
-        <div class="metric" style="grid-column:1 / -1;">
-          <div class="metric-label">Uyuklama alarmı</div>
-          <div class="metric-value" id="alarmValue">Kapalı</div>
-        </div>
+          <div class="buttons">
+            <button id="testEyeBtn" class="secondary">Uyuklama Sesini Dene</button>
+          </div>
 
-        <div class="metric" style="grid-column:1 / -1;">
-          <div class="metric-label">Telefon alarmı</div>
-          <div class="metric-value" id="phoneAlarmValue">Kapalı</div>
+          <hr style="border-color:#293652; margin:24px 0;">
+
+          <h2>📱 Telefon Alarmı</h2>
+
+          <div class="setting">
+            <label for="phoneSoundFile">Telefon için ayrı alarm sesi seç</label>
+            <input id="phoneSoundFile" type="file" accept="audio/*">
+          </div>
+
+          <div class="setting">
+            <label for="phoneVolume">
+              Telefon alarmı ses seviyesi:
+              <span id="phoneVolumeText">80%</span>
+            </label>
+            <input id="phoneVolume" type="range" min="0" max="100" value="80">
+          </div>
+
+          <div class="setting">
+            <label for="phoneConfidence">
+              Telefon algılama hassasiyeti:
+              <span id="phoneConfidenceText">30%</span>
+            </label>
+            <input id="phoneConfidence" type="range" min="15" max="70" step="5" value="30">
+            <p class="small">Daha düşük değerler algılamayı artırabilir ama yanlış tespitleri de artırabilir.</p>
+          </div>
+
+          <div class="buttons">
+            <button id="testPhoneBtn" class="secondary">Telefon Sesini Dene</button>
+          </div>
         </div>
       </div>
 
-      <button class="settings-toggle" id="settingsToggle"
-              aria-expanded="false">
-        ⚙️ Ayarları aç
-      </button>
-
-      <div class="settings-content" id="settingsContent">
-
-        <div class="setting-card">
-          <h3>🔊 Uyuklama alarmı</h3>
-          <p class="muted">Kendi ses dosyanı seç. Bu ses yalnızca uyuklama uyarısı içindir.</p>
-
-          <label for="eyeSoundFile" class="file-label">
-            Uyuklama alarmı sesi seç
-          </label>
-          <input id="eyeSoundFile" type="file" accept="audio/*">
-
-          <p id="eyeFileName" class="muted">Henüz ses seçilmedi.</p>
-
-          <label for="eyeVolume">Ses seviyesi</label>
-          <input id="eyeVolume" type="range" min="0" max="100" value="65">
-          <p id="eyeVolumeValue" class="muted">65%</p>
-
-          <audio id="eyeAudio" controls preload="none"></audio>
-
-          <button id="testEyeSound" class="secondary" style="margin-top:10px;">
-            Uyuklama sesini dene
-          </button>
-
-          <hr>
-
-          <label for="closureDelay">Uyuklama alarmı gecikmesi</label>
-          <input id="closureDelay" type="range" min="1" max="5" value="2">
-          <p id="closureDelayValue" class="muted">2 saniye</p>
-        </div>
-
-        <div class="setting-card">
-          <h3>📱 Telefon alarmı</h3>
-          <p class="muted">Telefon algılanması için farklı bir ses dosyası seç.</p>
-
-          <label for="phoneSoundFile" class="file-label">
-            Telefon alarmı sesi seç
-          </label>
-          <input id="phoneSoundFile" type="file" accept="audio/*">
-
-          <p id="phoneFileName" class="muted">Henüz ses seçilmedi.</p>
-
-          <label for="phoneVolume">Telefon alarmı ses seviyesi</label>
-          <input id="phoneVolume" type="range" min="0" max="100" value="65">
-          <p id="phoneVolumeValue" class="muted">65%</p>
-
-          <audio id="phoneAudio" controls preload="none"></audio>
-
-          <button id="testPhoneSound" class="secondary" style="margin-top:10px;">
-            Telefon sesini dene
-          </button>
-
-          <hr>
-
-          <label for="phoneConfidence">Telefon algılama hassasiyeti</label>
-          <input id="phoneConfidence" type="range" min="30" max="90" step="5" value="55">
-          <p id="phoneConfidenceValue" class="muted">55%</p>
-
-          <p id="phoneStatus" class="muted">Telefon modeli yüklenmeyi bekliyor.</p>
-        </div>
-
+      <div class="panel">
+        <h2>ℹ️ Kullanım</h2>
+        <p class="small">
+          1. Kamerayı başlat ve kamera iznini ver.<br>
+          2. İstersen iki alarm için ayrı ses dosyaları seç.<br>
+          3. Telefon algılama testi için telefonu kameranın görebileceği şekilde tut.<br>
+          4. Alarm sesi çalmıyorsa önce ilgili “Sesini Dene” düğmesine bas.
+        </p>
       </div>
-    </aside>
-
+    </section>
   </div>
-
-  <footer>
-    Bu sistem deneysel bir prototiptir; yanlış algılama yapabilir ve
-    gerçek sürüş güvenliği sisteminin yerine geçmez.
-  </footer>
-
 </main>
 
+<footer>
+  Bu uygulama bir prototiptir; sürüş güvenliği için tek başına kullanılmamalıdır.
+  Telefon ve göz algılama hatalı sonuç verebilir.
+</footer>
+
+<audio id="eyeAudio" loop></audio>
+<audio id="phoneAudio" loop></audio>
+
 <script>
-  const video = document.getElementById("video");
-  const canvas = document.getElementById("canvas");
+  const $ = id => document.getElementById(id);
+
+  const video = $("video");
+  const canvas = $("output");
   const ctx = canvas.getContext("2d");
 
-  const startBtn = document.getElementById("startBtn");
-  const stopBtn = document.getElementById("stopBtn");
-
-  const eyeAudio = document.getElementById("eyeAudio");
-  const phoneAudio = document.getElementById("phoneAudio");
-
-  // Dahili algılama eşiği; arayüzde gösterilmez.
-  const INTERNAL_EYE_THRESHOLD = 0.20;
-  const LONG_CLOSURE_MS = 700;
-
-  let running = false;
-  let processing = false;
   let camera = null;
   let faceMesh = null;
   let phoneModel = null;
 
-  let closedSince = null;
-  let longClosures = [];
+  let running = false;
+  let phoneCheckBusy = false;
+  let phoneTimer = null;
 
+  let eyeClosedSince = null;
   let eyeAlarmActive = false;
   let phoneAlarmActive = false;
-  let phoneCheckBusy = false;
   let phoneDetectedAt = 0;
 
-  let eyeSoundUrl = null;
-  let phoneSoundUrl = null;
-  let phoneCheckTimer = null;
+  // Eşik kullanıcı arayüzünde gösterilmez.
+  const INTERNAL_EYE_THRESHOLD = 0.20;
 
-  const $ = id => document.getElementById(id);
+  function setStatus(id, message, type = "warn") {
+    const element = $(id);
+    element.textContent = message;
+    element.className = "status " + type;
+  }
+
+  function updateRangeText(inputId, textId, suffix = "%") {
+    $(textId).textContent = $(inputId).value + suffix;
+  }
 
   $("settingsToggle").addEventListener("click", () => {
-    const content = $("settingsContent");
-    const open = content.classList.toggle("open");
-
-    $("settingsToggle").textContent =
-      open ? "⚙️ Ayarları kapat" : "⚙️ Ayarları aç";
-
-    $("settingsToggle").setAttribute("aria-expanded", String(open));
+    $("settingsContent").hidden = !$("settingsContent").hidden;
   });
 
-  function setStatus(text, color) {
-    $("status").textContent = text;
-    $("statusDot").style.background = color;
+  $("eyeVolume").addEventListener("input", () => {
+    updateRangeText("eyeVolume", "eyeVolumeText");
+    $("eyeAudio").volume = Number($("eyeVolume").value) / 100;
+  });
+
+  $("phoneVolume").addEventListener("input", () => {
+    updateRangeText("phoneVolume", "phoneVolumeText");
+    $("phoneAudio").volume = Number($("phoneVolume").value) / 100;
+  });
+
+  $("phoneConfidence").addEventListener("input", () => {
+    updateRangeText("phoneConfidence", "phoneConfidenceText");
+  });
+
+  $("closureDelay").addEventListener("input", () => {
+    $("closureDelayText").textContent =
+      (Number($("closureDelay").value) / 1000).toLocaleString("tr-TR") +
+      " saniye";
+  });
+
+  function loadSelectedAudio(inputId, audioId) {
+    const file = $(inputId).files[0];
+    if (!file) return;
+
+    const audio = $(audioId);
+
+    if (audio.dataset.objectUrl) {
+      URL.revokeObjectURL(audio.dataset.objectUrl);
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    audio.dataset.objectUrl = objectUrl;
+    audio.src = objectUrl;
+    audio.load();
   }
 
-  function setMessage(text) {
-    $("message").textContent = text;
-  }
+  $("eyeSoundFile").addEventListener("change", () => {
+    loadSelectedAudio("eyeSoundFile", "eyeAudio");
+  });
 
-  function distance(a, b) {
-    return Math.hypot(a.x - b.x, a.y - b.y);
-  }
+  $("phoneSoundFile").addEventListener("change", () => {
+    loadSelectedAudio("phoneSoundFile", "phoneAudio");
+  });
 
-  function eyeRatio(points, upper1, lower1, upper2, lower2, left, right) {
-    const width = distance(points[left], points[right]);
-    if (!width) return NaN;
-
-    return (
-      distance(points[upper1], points[lower1]) +
-      distance(points[upper2], points[lower2])
-    ) / (2 * width);
-  }
-
-  function stopEyeAlarm() {
-    eyeAudio.pause();
+  async function playAlarm(audioId) {
+    const audio = $(audioId);
+    audio.volume = Number(
+      $(audioId === "eyeAudio" ? "eyeVolume" : "phoneVolume").value
+    ) / 100;
 
     try {
-      eyeAudio.currentTime = 0;
-    } catch (_) {}
-
-    eyeAudio.loop = false;
-    eyeAlarmActive = false;
-    $("alarmValue").textContent = "Kapalı";
+      await audio.play();
+    } catch (error) {
+      console.warn("Ses başlatılamadı:", error);
+      setStatus(
+        audioId === "eyeAudio" ? "cameraStatus" : "phoneStatus",
+        "Ses çalınamadı. Ses deneme düğmesine basıp tekrar dene.",
+        "warn"
+      );
+    }
   }
 
-  function stopPhoneAlarm() {
-    phoneAudio.pause();
-
-    try {
-      phoneAudio.currentTime = 0;
-    } catch (_) {}
-
-    phoneAudio.loop = false;
-    phoneAlarmActive = false;
-    $("phoneAlarmValue").textContent = "Kapalı";
+  function stopAlarm(audioId) {
+    const audio = $(audioId);
+    audio.pause();
+    audio.currentTime = 0;
   }
 
   async function startEyeAlarm() {
     if (eyeAlarmActive) return;
+    eyeAlarmActive = true;
+    await playAlarm("eyeAudio");
+  }
 
-    if (!eyeAudio.src) {
-      $("alarmValue").textContent = "Ses seçilmedi";
-      setMessage("Ayarlar bölümünden uyuklama alarmı için ses seç.");
-      return;
-    }
-
-    try {
-      eyeAudio.volume = Number($("eyeVolume").value) / 100;
-      eyeAudio.loop = true;
-      eyeAudio.currentTime = 0;
-      await eyeAudio.play();
-
-      eyeAlarmActive = true;
-      $("alarmValue").textContent = "Aktif";
-      setStatus("Uyuklama uyarısı", "#ef4444");
-      setMessage("Dikkat: Uzun göz kapanması algılandı.");
-    } catch (error) {
-      $("alarmValue").textContent = "Ses başlatılamadı";
-    }
+  function stopEyeAlarm() {
+    eyeAlarmActive = false;
+    stopAlarm("eyeAudio");
   }
 
   async function startPhoneAlarm() {
     if (phoneAlarmActive) return;
-
-    if (!phoneAudio.src) {
-      $("phoneAlarmValue").textContent = "Ses seçilmedi";
-      $("phoneStatus").textContent =
-        "Telefon algılandı. Ayarlardan telefon alarmı sesi seç.";
-      return;
-    }
-
-    try {
-      phoneAudio.volume = Number($("phoneVolume").value) / 100;
-      phoneAudio.loop = true;
-      phoneAudio.currentTime = 0;
-      await phoneAudio.play();
-
-      phoneAlarmActive = true;
-      $("phoneAlarmValue").textContent = "Aktif";
-      $("phoneStatus").textContent = "Telefon algılandı!";
-      setStatus("Telefon uyarısı", "#ef4444");
-    } catch (error) {
-      $("phoneAlarmValue").textContent = "Ses başlatılamadı";
-    }
+    phoneAlarmActive = true;
+    await playAlarm("phoneAudio");
   }
 
-  function setFileAudio(event, audio, kind) {
-    const file = event.target.files && event.target.files[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("audio/")) {
-      setMessage("Lütfen geçerli bir ses dosyası seç.");
-      event.target.value = "";
-      return;
-    }
-
-    if (kind === "eye") {
-      stopEyeAlarm();
-      if (eyeSoundUrl) URL.revokeObjectURL(eyeSoundUrl);
-
-      eyeSoundUrl = URL.createObjectURL(file);
-      $("eyeFileName").textContent = "Seçilen dosya: " + file.name;
-    } else {
-      stopPhoneAlarm();
-      if (phoneSoundUrl) URL.revokeObjectURL(phoneSoundUrl);
-
-      phoneSoundUrl = URL.createObjectURL(file);
-      $("phoneFileName").textContent = "Seçilen dosya: " + file.name;
-    }
-
-    audio.src = kind === "eye" ? eyeSoundUrl : phoneSoundUrl;
-    audio.load();
-    setMessage("Alarm sesi hazır.");
+  function stopPhoneAlarm() {
+    phoneAlarmActive = false;
+    stopAlarm("phoneAudio");
   }
 
-  $("eyeSoundFile").addEventListener("change", event =>
-    setFileAudio(event, eyeAudio, "eye")
-  );
-
-  $("phoneSoundFile").addEventListener("change", event =>
-    setFileAudio(event, phoneAudio, "phone")
-  );
-
-  $("eyeVolume").addEventListener("input", () => {
-    eyeAudio.volume = Number($("eyeVolume").value) / 100;
-    $("eyeVolumeValue").textContent = $("eyeVolume").value + "%";
+  $("testEyeBtn").addEventListener("click", async () => {
+    await playAlarm("eyeAudio");
   });
 
-  $("phoneVolume").addEventListener("input", () => {
-    phoneAudio.volume = Number($("phoneVolume").value) / 100;
-    $("phoneVolumeValue").textContent = $("phoneVolume").value + "%";
+  $("testPhoneBtn").addEventListener("click", async () => {
+    await playAlarm("phoneAudio");
   });
 
-  $("closureDelay").addEventListener("input", () => {
-    $("closureDelayValue").textContent =
-      $("closureDelay").value + " saniye";
-  });
-
-  $("phoneConfidence").addEventListener("input", () => {
-    $("phoneConfidenceValue").textContent =
-      $("phoneConfidence").value + "%";
-  });
-
-  async function testAudio(audio, volumeControl, statusElement) {
-    if (!audio.src) {
-      statusElement.textContent = "Önce bir ses dosyası seç.";
-      return;
-    }
-
-    try {
-      audio.loop = false;
-      audio.volume = Number(volumeControl.value) / 100;
-      audio.currentTime = 0;
-      await audio.play();
-      statusElement.textContent = "Ses çalıyor.";
-    } catch (error) {
-      statusElement.textContent =
-        "Ses çalınamadı. Dosyayı tekrar seçip dene.";
-    }
+  // Gözün açıklığını yaklaşık hesaplamak için iki gözün
+  // yatay ve dikey landmark mesafeleri kullanılır.
+  function distance(a, b) {
+    const dx = a.x - b.x;
+    const dy = a.y - b.y;
+    return Math.sqrt(dx * dx + dy * dy);
   }
 
-  $("testEyeSound").addEventListener("click", () =>
-    testAudio(eyeAudio, $("eyeVolume"), $("eyeFileName"))
-  );
+  function eyeRatio(points, left, right, upper, lower) {
+    const horizontal = distance(points[left], points[right]);
+    const vertical = distance(points[upper], points[lower]);
 
-  $("testPhoneSound").addEventListener("click", () =>
-    testAudio(phoneAudio, $("phoneVolume"), $("phoneFileName"))
-  );
-
-  function resetFace() {
-    closedSince = null;
-    $("faceValue").textContent = "Bulunamadı";
-    $("eyeValue").textContent = "Belirsiz";
-    $("closedValue").textContent = "0,0 sn";
-    stopEyeAlarm();
-
-    setStatus("Yüz algılanamadı", "#f59e0b");
-    setMessage("Yüzünü kameraya dön ve ışığı kontrol et.");
+    if (horizontal === 0) return 1;
+    return vertical / horizontal;
   }
 
-  function onResults(results) {
+  function handleFaceResults(results) {
     if (!running) return;
 
-    const image = results.image;
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
 
-    if (image && image.width && image.height) {
-      if (canvas.width !== image.width || canvas.height !== image.height) {
-        canvas.width = image.width;
-        canvas.height = image.height;
-      }
+    ctx.save();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    ctx.restore();
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-    }
-
-    const faces = results.multiFaceLandmarks;
-
-    if (!faces || faces.length === 0) {
-      resetFace();
+    if (!results.multiFaceLandmarks ||
+        results.multiFaceLandmarks.length === 0) {
+      $("eyeValue").textContent = "Yüz bulunamadı";
+      eyeClosedSince = null;
+      stopEyeAlarm();
+      setStatus("cameraStatus", "Yüzünü kameraya doğru çevir.", "warn");
       return;
     }
 
-    const p = faces[0];
+    const points = results.multiFaceLandmarks[0];
 
-    const left = eyeRatio(p, 159, 145, 158, 153, 33, 133);
-    const right = eyeRatio(p, 386, 374, 385, 380, 362, 263);
-    const eye = (left + right) / 2;
+    const left = eyeRatio(points, 33, 133, 159, 145);
+    const right = eyeRatio(points, 362, 263, 386, 374);
+    const average = (left + right) / 2;
 
-    if (!Number.isFinite(eye)) {
-      resetFace();
-      return;
-    }
-
-    $("faceValue").textContent = "Algılandı";
-
+    const closed = average < INTERNAL_EYE_THRESHOLD;
     const now = Date.now();
-    const closed = eye < INTERNAL_EYE_THRESHOLD;
 
     if (closed) {
-      if (closedSince === null) closedSince = now;
+      if (eyeClosedSince === null) eyeClosedSince = now;
 
-      const elapsed = now - closedSince;
+      const elapsed = now - eyeClosedSince;
+      $("eyeValue").textContent = "Gözler kapalı";
 
-      $("eyeValue").textContent = "Kapalı olabilir";
-      $("closedValue").textContent =
-        (elapsed / 1000).toFixed(1).replace(".", ",") + " sn";
-
-      setStatus("Göz kapanması izleniyor", "#f59e0b");
-
-      if (elapsed >= LONG_CLOSURE_MS &&
-          (longClosures.length === 0 ||
-           now - longClosures[longClosures.length - 1] > 1500)) {
-        longClosures.push(now);
-      }
-
-      longClosures = longClosures.filter(t => now - t < 30000);
-
-      const delay = Number($("closureDelay").value) * 1000;
-      const prolonged = elapsed >= delay;
-      const repeated = longClosures.length >= 3;
-
-      if (prolonged || repeated) {
+      if (elapsed >= Number($("closureDelay").value)) {
         startEyeAlarm();
+        setStatus("cameraStatus", "Dikkat! Uzun süre göz kapanması algılandı.", "bad");
       } else {
-        setMessage("Göz durumu izleniyor.");
+        setStatus("cameraStatus", "Göz kapanması izleniyor...", "warn");
       }
     } else {
-      closedSince = null;
-      $("eyeValue").textContent = "Açık";
-      $("closedValue").textContent = "0,0 sn";
-
-      if (eyeAlarmActive) stopEyeAlarm();
-
-      if (!phoneAlarmActive) {
-        setStatus("Yüz algılandı", "#22c55e");
-      }
-
-      setMessage("Göz takibi devam ediyor.");
+      eyeClosedSince = null;
+      stopEyeAlarm();
+      $("eyeValue").textContent = "Gözler açık";
+      setStatus("cameraStatus", "Kamera çalışıyor; yüz takip ediliyor.", "good");
     }
   }
 
   async function loadPhoneModel() {
-    $("phoneStatus").textContent = "Telefon modeli yükleniyor...";
+    $("phoneValue").textContent = "Model yükleniyor...";
+    setStatus("phoneStatus", "Telefon algılama modeli yükleniyor...");
 
     try {
       await tf.ready();
-      phoneModel = await cocoSsd.load({
-        base: "lite_mobilenet_v2"
-      });
-
-      $("phoneStatus").textContent = "Telefon modeli hazır.";
+      phoneModel = await cocoSsd.load({ base: "lite_mobilenet_v2" });
+      $("phoneValue").textContent = "Model hazır";
+      setStatus("phoneStatus", "Telefon modeli hazır.", "good");
     } catch (error) {
       console.error("Telefon modeli yüklenemedi:", error);
-      $("phoneStatus").textContent =
-        "Model yüklenemedi. İnternet bağlantısını kontrol et.";
+      $("phoneValue").textContent = "Model yüklenemedi";
+      setStatus("phoneStatus", "Model hatası: " + error.message, "bad");
     }
   }
 
   async function checkPhone() {
     if (!running || !phoneModel || phoneCheckBusy ||
-        video.readyState < 2) return;
+        video.readyState < 2 || video.videoWidth === 0) {
+      return;
+    }
 
     phoneCheckBusy = true;
 
     try {
-      const predictions = await phoneModel.detect(video);
       const confidence = Number($("phoneConfidence").value) / 100;
+      const predictions = await phoneModel.detect(video, 20, confidence);
 
-      const found = predictions.some(item =>
-        item.class === "cell phone" && item.score >= confidence
+      console.log("Kamera algılamaları:", predictions);
+
+      const phones = predictions.filter(item =>
+        item.class.toLowerCase() === "cell phone"
       );
 
       const now = Date.now();
 
-      if (found) {
+      if (phones.length > 0) {
         phoneDetectedAt = now;
-        $("phoneValue").textContent = "Algılandı";
+        $("phoneValue").textContent = "Telefon algılandı";
+        setStatus(
+          "phoneStatus",
+          "Telefon algılandı. Güven: " +
+            Math.round(phones[0].score * 100) + "%",
+          "bad"
+        );
 
-        if (!phoneAlarmActive) {
-          startPhoneAlarm();
-        }
-
-        $("phoneStatus").textContent =
-          "Görüntüde telefon algılandı.";
-      } else if (now - phoneDetectedAt > 1800) {
+        if (!phoneAlarmActive) await startPhoneAlarm();
+      } else if (now - phoneDetectedAt > 2000) {
         $("phoneValue").textContent = "Algılanmadı";
 
         if (phoneAlarmActive) stopPhoneAlarm();
 
-        $("phoneStatus").textContent =
-          phoneModel ? "Telefon algılama aktif." :
-          "Telefon modeli yükleniyor.";
+        setStatus("phoneStatus", "Model çalışıyor; telefon tespit edilmedi.", "good");
       }
     } catch (error) {
       console.error("Telefon algılama hatası:", error);
+      setStatus("phoneStatus", "Algılama hatası: " + error.message, "bad");
     } finally {
       phoneCheckBusy = false;
     }
@@ -803,130 +604,94 @@
   async function startCamera() {
     if (running) return;
 
-    startBtn.disabled = true;
-    setStatus("Başlatılıyor", "#60a5fa");
-    setMessage("Kamera izni bekleniyor...");
+    $("startBtn").disabled = true;
+    setStatus("cameraStatus", "Kamera ve yüz modeli hazırlanıyor...");
 
     try {
-      if (!navigator.mediaDevices ||
-          !navigator.mediaDevices.getUserMedia) {
-        throw new Error("Tarayıcı kamera erişimini desteklemiyor.");
+      if (!faceMesh) {
+        faceMesh = new FaceMesh({
+          locateFile: file =>
+            "https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/" + file
+        });
+
+        faceMesh.setOptions({
+          maxNumFaces: 1,
+          refineLandmarks: true,
+          minDetectionConfidence: 0.5,
+          minTrackingConfidence: 0.5
+        });
+
+        faceMesh.onResults(handleFaceResults);
       }
-
-      faceMesh = new FaceMesh({
-        locateFile: file =>
-          "https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/" + file
-      });
-
-      faceMesh.setOptions({
-        maxNumFaces: 1,
-        refineLandmarks: true,
-        minDetectionConfidence: 0.65,
-        minTrackingConfidence: 0.65
-      });
-
-      faceMesh.onResults(onResults);
 
       camera = new Camera(video, {
         onFrame: async () => {
-          if (!running || processing || video.readyState < 2) return;
-
-          processing = true;
-
-          try {
+          if (running && faceMesh) {
             await faceMesh.send({ image: video });
-          } catch (error) {
-            console.error("Yüz algılama hatası:", error);
-          } finally {
-            processing = false;
           }
         },
         width: 640,
         height: 480
       });
 
-      running = true;
       await camera.start();
 
-      $("placeholder").style.display = "none";
-      startBtn.disabled = true;
-      stopBtn.disabled = false;
+      running = true;
+      $("stopBtn").disabled = false;
+      setStatus("cameraStatus", "Kamera çalışıyor.", "good");
 
-      setStatus("Kamera aktif", "#22c55e");
-      setMessage("Yüz ve telefon algılama başlatıldı.");
+      if (!phoneModel) loadPhoneModel();
 
-      if (phoneCheckTimer) clearInterval(phoneCheckTimer);
-      phoneCheckTimer = setInterval(checkPhone, 900);
+      phoneTimer = setInterval(checkPhone, 900);
     } catch (error) {
+      console.error("Kamera başlatma hatası:", error);
       running = false;
-      startBtn.disabled = false;
-      stopBtn.disabled = true;
-
-      setStatus("Kamera açılamadı", "#ef4444");
-      setMessage(error.message || "Kamera başlatılamadı.");
-      console.error(error);
+      $("startBtn").disabled = false;
+      setStatus(
+        "cameraStatus",
+        "Kamera açılamadı: " + error.message +
+          ". Kamera iznini kontrol et ve sayfayı güvenli bağlantıda aç.",
+        "bad"
+      );
     }
   }
 
-  async function stopCamera() {
+  function stopCamera() {
     running = false;
-    closedSince = null;
-    longClosures = [];
 
-    stopEyeAlarm();
-    stopPhoneAlarm();
-
-    if (phoneCheckTimer) {
-      clearInterval(phoneCheckTimer);
-      phoneCheckTimer = null;
+    if (phoneTimer) {
+      clearInterval(phoneTimer);
+      phoneTimer = null;
     }
 
-    if (camera) {
-      try { camera.stop(); } catch (_) {}
-      camera = null;
-    }
+    if (camera && camera.stop) camera.stop();
 
     if (video.srcObject) {
       video.srcObject.getTracks().forEach(track => track.stop());
       video.srcObject = null;
     }
 
-    if (faceMesh) {
-      try { await faceMesh.close(); } catch (_) {}
-      faceMesh = null;
-    }
-
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    $("placeholder").style.display = "flex";
 
-    $("faceValue").textContent = "Bekleniyor";
-    $("eyeValue").textContent = "Bekleniyor";
-    $("closedValue").textContent = "0,0 sn";
-    $("phoneValue").textContent = "Bekleniyor";
+    eyeClosedSince = null;
+    phoneDetectedAt = 0;
 
-    startBtn.disabled = false;
-    stopBtn.disabled = true;
+    stopEyeAlarm();
+    stopPhoneAlarm();
 
-    setStatus("Kamera kapalı", "#64748b");
-    setMessage("Kamera durduruldu.");
+    $("eyeValue").textContent = "Durduruldu";
+    $("phoneValue").textContent = phoneModel ? "Model hazır" : "Model bekleniyor";
+
+    $("startBtn").disabled = false;
+    $("stopBtn").disabled = true;
+
+    setStatus("cameraStatus", "Kamera durduruldu.", "warn");
   }
 
-  startBtn.addEventListener("click", startCamera);
-  stopBtn.addEventListener("click", stopCamera);
+  $("startBtn").addEventListener("click", startCamera);
+  $("stopBtn").addEventListener("click", stopCamera);
 
-  window.addEventListener("beforeunload", () => {
-    if (video.srcObject) {
-      video.srcObject.getTracks().forEach(track => track.stop());
-    }
-
-    if (eyeSoundUrl) URL.revokeObjectURL(eyeSoundUrl);
-    if (phoneSoundUrl) URL.revokeObjectURL(phoneSoundUrl);
-  });
-
-  eyeAudio.volume = 0.65;
-  phoneAudio.volume = 0.65;
-
-  // Telefon modelini kamera açılmadan önce yüklemeyi dene.
+  // Sayfa açılınca telefon modelini önceden yüklemeyi dene.
   loadPhoneModel();
 </script>
 </body>
