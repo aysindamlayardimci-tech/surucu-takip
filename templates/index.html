@@ -3,361 +3,592 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#080d19">
-  <title>Sürücü Takip | Dikkat ve Göz İzleme</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1020">
+  <title>Sürücü Takip | Dikkat Sistemi</title>
 
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
 
   <style>
     * { box-sizing: border-box; }
+
     body {
       margin: 0;
-      background: #080d19;
-      color: #edf3ff;
-      font-family: Inter, "Segoe UI", Arial, sans-serif;
+      color: #edf2ff;
+      background: #0b1020;
+      font-family: Arial, sans-serif;
     }
+
+    .container {
+      width: min(1100px, 94%);
+      margin: auto;
+      padding: 28px 0;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+
+    h1 { margin: 0; font-size: 30px; }
+    h2 { font-size: 19px; margin-top: 0; }
+    p { line-height: 1.5; }
+
+    .muted { color: #a7b4cc; font-size: 14px; }
+
     .panel {
-      background: rgba(18, 27, 46, .92);
-      border: 1px solid #26344c;
-      border-radius: 20px;
+      background: #151e32;
+      border: 1px solid #293650;
+      border-radius: 18px;
+      padding: 20px;
+      min-width: 0;
     }
-    .muted { color: #93a4bd; }
-    .camera-stage {
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.6fr) minmax(270px, 1fr);
+      gap: 20px;
+    }
+
+    .camera {
       position: relative;
       overflow: hidden;
-      background: #03060c;
-      border: 1px solid #293851;
-      border-radius: 18px;
-      aspect-ratio: 16 / 10;
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      border-radius: 14px;
+      background: #030712;
+      border: 1px solid #334155;
     }
-    #output_canvas {
-      display: block;
+
+    #video {
+      display: none;
+    }
+
+    #canvas {
       width: 100%;
       height: 100%;
+      display: block;
       object-fit: contain;
       transform: scaleX(-1);
     }
-    .status-dot {
-      display: inline-block;
+
+    #placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      text-align: center;
+      color: #a7b4cc;
+    }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    button, .file-label {
+      border: 0;
+      border-radius: 10px;
+      padding: 13px;
+      font-weight: bold;
+      font-size: 14px;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    button:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+
+    .primary { background: #3b82f6; color: white; }
+    .secondary { background: #293650; color: white; }
+    .danger { background: #b91c1c; color: white; }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #202b41;
+      padding: 10px 13px;
+      border-radius: 20px;
+      font-size: 13px;
+    }
+
+    .dot {
       width: 9px;
       height: 9px;
       border-radius: 50%;
       background: #64748b;
-      margin-right: 8px;
     }
-    .btn {
-      min-height: 46px;
-      padding: 11px 16px;
-      border-radius: 12px;
-      font-weight: 700;
-      transition: .2s;
-      cursor: pointer;
+
+    .metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
     }
-    .btn:disabled { opacity: .5; cursor: not-allowed; }
-    .btn-primary { background: #2563eb; color: white; }
-    .btn-primary:hover { background: #1d4ed8; }
-    .btn-secondary { background: #26344c; color: #e2e8f0; }
-    .btn-secondary:hover { background: #344761; }
+
     .metric {
-      background: #0c1424;
-      border: 1px solid #26344c;
-      border-radius: 14px;
-      padding: 15px;
+      padding: 14px;
+      background: #0d1527;
+      border: 1px solid #293650;
+      border-radius: 12px;
       min-width: 0;
     }
-    input[type="range"] { width: 100%; accent-color: #60a5fa; }
-    @media (max-width: 640px) {
-      .camera-stage { aspect-ratio: 4 / 3; }
-      .panel { border-radius: 16px; }
-      .metric { padding: 12px; }
+
+    .metric-label {
+      color: #a7b4cc;
+      font-size: 12px;
+    }
+
+    .metric-value {
+      margin-top: 8px;
+      font-size: 17px;
+      font-weight: bold;
+      overflow-wrap: anywhere;
+    }
+
+    .section {
+      margin-top: 22px;
+      padding-top: 18px;
+      border-top: 1px solid #293650;
+    }
+
+    .file-label {
+      display: block;
+      background: #293650;
+      color: white;
+      margin-top: 10px;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: #60a5fa;
+      margin-top: 12px;
+    }
+
+    audio {
+      width: 100%;
+      margin-top: 12px;
+    }
+
+    .notice {
+      margin-top: 20px;
+      padding: 14px;
+      border-radius: 12px;
+      background: #172b48;
+      color: #cbdcf8;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    #message {
+      overflow-wrap: anywhere;
+      min-height: 24px;
+    }
+
+    footer {
+      color: #8796af;
+      text-align: center;
+      font-size: 12px;
+      margin-top: 24px;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 760px) {
+      .layout { grid-template-columns: 1fr; }
+      .container { padding: 18px 0; }
+      h1 { font-size: 25px; }
+      .panel { padding: 15px; }
+    }
+
+    @media (max-width: 360px) {
+      .metrics { grid-template-columns: 1fr; }
+      .buttons { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 
 <body>
-  <main class="max-w-6xl mx-auto px-4 py-5 sm:px-6 sm:py-8">
-    <header class="flex flex-wrap items-center justify-between gap-4 mb-7">
+  <main class="container">
+    <header>
       <div>
-        <p class="text-blue-400 text-xs font-bold tracking-widest uppercase mb-2">
+        <p style="color:#60a5fa;font-weight:bold;font-size:12px;">
           SÜRÜŞ GÜVENLİĞİ • PROTOTİP
         </p>
-        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">
-          Sürücü <span class="text-blue-400">Takip</span>
-        </h1>
-        <p class="muted text-sm mt-2">
-          Kamera üzerinden yüz ve göz açıklığı takibi
-        </p>
+        <h1>Sürücü Takip</h1>
+        <p class="muted">Kamera destekli dikkat ve göz takibi</p>
       </div>
-      <div class="panel px-4 py-3 text-sm">
-        <span id="status_dot" class="status-dot"></span>
-        <span id="status_badge" aria-live="polite">Başlatılmayı bekliyor</span>
+
+      <div class="status">
+        <span class="dot" id="statusDot"></span>
+        <span id="status">Kamera kapalı</span>
       </div>
     </header>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
-      <section class="lg:col-span-2 panel p-3 sm:p-5">
-        <div class="flex items-center justify-between gap-3 mb-4">
-          <div>
-            <h2 class="font-bold text-lg">Canlı kamera</h2>
-            <p class="muted text-xs mt-1">Yüzünüzün kamerada net göründüğünden emin olun.</p>
-          </div>
-          <span id="camera_label" class="text-xs muted">Kamera kapalı</span>
-        </div>
+    <div class="layout">
+      <section class="panel">
+        <h2>Canlı kamera</h2>
+        <p class="muted">Yüzünüzün iyi aydınlatıldığından emin olun.</p>
 
-        <div class="camera-stage">
-          <video id="input_video" autoplay muted playsinline
-                 style="display:none"></video>
-          <canvas id="output_canvas" aria-label="Kamera görüntüsü"></canvas>
-          <div id="camera_placeholder"
-               class="absolute inset-0 flex flex-col items-center justify-center text-center p-5">
-            <div class="text-4xl mb-3">◉</div>
-            <p class="font-semibold">Kamera başlatılmadı</p>
-            <p class="muted text-sm mt-2">Başlat düğmesine basıp kamera izni verin.</p>
+        <div class="camera">
+          <video id="video" autoplay muted playsinline></video>
+          <canvas id="canvas"></canvas>
+          <div id="placeholder">
+            <div style="font-size:38px;">◉</div>
+            <strong>Kamera başlatılmadı</strong>
+            <p class="muted">Başlat düğmesine basın ve kamera izni verin.</p>
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-3 mt-4">
-          <button id="start_btn" class="btn btn-primary">Kamerayı başlat</button>
-          <button id="stop_btn" class="btn btn-secondary" disabled>Durdur</button>
+        <div class="buttons">
+          <button id="startBtn" class="primary">Kamerayı başlat</button>
+          <button id="stopBtn" class="secondary" disabled>Durdur</button>
         </div>
 
-        <p id="message" class="muted text-sm mt-4" aria-live="polite">
-          Sistem henüz başlatılmadı.
+        <p id="message" class="muted" aria-live="polite">
+          Sistem başlatılmayı bekliyor.
         </p>
+
+        <div class="notice">
+          Kamera erişimi için tarayıcı izni gerekir. Kamera görüntüsü
+          bu sayfada işlenir; uygulama doğrulanmış bir sürüş güvenliği
+          sistemi değildir.
+        </div>
       </section>
 
-      <aside class="panel p-4 sm:p-5">
-        <h2 class="text-lg font-bold mb-4">Takip paneli</h2>
+      <aside class="panel">
+        <h2>Takip paneli</h2>
 
-        <div class="grid grid-cols-2 lg:grid-cols-1 gap-3">
+        <div class="metrics">
           <div class="metric">
-            <p class="muted text-xs">Yüz algılama</p>
-            <p id="face_value" class="text-xl font-bold mt-2">Bekleniyor</p>
+            <div class="metric-label">Yüz algılama</div>
+            <div class="metric-value" id="faceValue">Bekleniyor</div>
           </div>
+
           <div class="metric">
-            <p class="muted text-xs">Göz açıklığı (EAR)</p>
-            <p id="ear_value" class="text-xl font-bold mt-2">—</p>
+            <div class="metric-label">Göz durumu</div>
+            <div class="metric-value" id="eyeValue">Bekleniyor</div>
           </div>
+
           <div class="metric">
-            <p class="muted text-xs">Gözler kapalı</p>
-            <p id="closed_value" class="text-xl font-bold mt-2">0.0 sn</p>
+            <div class="metric-label">Kapanma süresi</div>
+            <div class="metric-value" id="closedValue">0,0 sn</div>
           </div>
+
           <div class="metric">
-            <p class="muted text-xs">Alarm durumu</p>
-            <p id="alarm_value" class="text-xl font-bold mt-2">Kapalı</p>
+            <div class="metric-label">Alarm durumu</div>
+            <div class="metric-value" id="alarmValue">Kapalı</div>
           </div>
         </div>
 
-        <div class="mt-6">
-          <div class="flex items-center justify-between gap-3 mb-3">
-            <label for="threshold" class="text-sm font-semibold">
-              Göz açıklığı eşiği
-            </label>
-            <span id="threshold_value" class="text-blue-400 font-bold">0.20</span>
-          </div>
-          <input id="threshold" type="range" min="0.10" max="0.35"
-                 step="0.01" value="0.20">
-          <p class="muted text-xs mt-2">
-            Eşik kişiye, kameraya ve ışığa göre değişebilir.
+        <div class="section">
+          <h2>Alarm sesi</h2>
+          <p class="muted">
+            Telefonundan veya bilgisayarından bir ses dosyası seç.
+            MP3, WAV veya tarayıcının desteklediği ses dosyaları kullanılabilir.
           </p>
+
+          <label class="file-label" for="soundFile">
+            Kendi alarm sesimi seç
+          </label>
+          <input id="soundFile" type="file" accept="audio/*">
+
+          <p id="fileName" class="muted">Henüz ses dosyası seçilmedi.</p>
+
+          <label for="volume">
+            Ses seviyesi: <strong id="volumeValue">65%</strong>
+          </label>
+          <input id="volume" type="range" min="0" max="100" value="65">
+
+          <audio id="alarmAudio" controls preload="none"></audio>
+
+          <button id="testSoundBtn" class="secondary"
+                  style="width:100%;margin-top:10px;">
+            Alarm sesini dene
+          </button>
         </div>
 
-        <div class="mt-6">
-          <p class="text-sm font-semibold mb-3">Alarm toleransı</p>
-          <div class="grid grid-cols-3 gap-2">
-            <button class="btn btn-secondary tolerance" data-seconds="1">1 sn</button>
-            <button class="btn btn-primary tolerance" data-seconds="2">2 sn</button>
-            <button class="btn btn-secondary tolerance" data-seconds="3">3 sn</button>
-          </div>
-        </div>
-
-        <div class="mt-6 p-3 rounded-xl bg-blue-950/40 border border-blue-900">
-          <p class="text-sm font-semibold text-blue-300">Bilgilendirme</p>
-          <p class="muted text-xs mt-2 leading-5">
-            Bu bir prototiptir. Yanlış algılama yapabilir ve gerçek sürüş
-            güvenliği için doğrulanmış bir sistem değildir.
+        <div class="section">
+          <h2>Alarm davranışı</h2>
+          <p class="muted">
+            Alarm; gözler uzun süre kapalı algılandığında veya
+            tekrarlayan uzun kapanmalar görüldüğünde devreye girmeyi dener.
           </p>
+          <div class="metric">
+            <div class="metric-label">Kapanma uyarısı</div>
+            <div class="metric-value">2 saniye</div>
+          </div>
         </div>
       </aside>
     </div>
 
-    <footer class="muted text-xs text-center mt-7 leading-5">
-      Kamera görüntüsü tarayıcıda işlenir. Kamera iznini yalnızca güvendiğiniz
-      cihazlarda verin.
+    <footer>
+      Bu uygulama deneysel bir prototiptir. Yanlış algılama yapabilir;
+      sürüş sırasında tek güvenlik önlemi olarak kullanılmamalıdır.
     </footer>
   </main>
 
-  <audio id="alarm_audio" loop preload="auto">
-    <source src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg"
-            type="audio/ogg">
-  </audio>
-
   <script>
-    const video = document.getElementById("input_video");
-    const canvas = document.getElementById("output_canvas");
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
-    const badge = document.getElementById("status_badge");
-    const dot = document.getElementById("status_dot");
-    const message = document.getElementById("message");
-    const placeholder = document.getElementById("camera_placeholder");
-    const audio = document.getElementById("alarm_audio");
+    const audio = document.getElementById("alarmAudio");
 
-    const threshold = document.getElementById("threshold");
-    let alarmSeconds = 2;
-    let closedSince = null;
-    let alarmPlaying = false;
-    let running = false;
+    const startBtn = document.getElementById("startBtn");
+    const stopBtn = document.getElementById("stopBtn");
+
+    // Algılama için dahili değer. Kullanıcı arayüzünde gösterilmez.
+    const INTERNAL_EYE_THRESHOLD = 0.20;
+    const ALARM_DELAY_MS = 2000;
+    const LONG_CLOSURE_MS = 700;
+
     let camera = null;
     let faceMesh = null;
+    let running = false;
     let processing = false;
+    let closedSince = null;
+    let alarmPlaying = false;
+    let longClosures = [];
+    let soundUrl = null;
 
     function setStatus(text, color) {
-      badge.textContent = text;
-      dot.style.background = color;
+      document.getElementById("status").textContent = text;
+      document.getElementById("statusDot").style.background = color;
     }
 
     function setMessage(text) {
-      message.textContent = text;
-    }
-
-    function stopAlarm() {
-      audio.pause();
-      audio.currentTime = 0;
-      alarmPlaying = false;
-      document.getElementById("alarm_value").textContent = "Kapalı";
-    }
-
-    async function startAlarm() {
-      if (alarmPlaying) return;
-      try {
-        await audio.play();
-        alarmPlaying = true;
-        document.getElementById("alarm_value").textContent = "Aktif";
-      } catch (error) {
-        document.getElementById("alarm_value").textContent = "Ses izni gerekli";
-        setMessage("Tarayıcı sesi başlatamadı. Başlat düğmesine yeniden basmayı deneyin.");
-      }
+      document.getElementById("message").textContent = text;
     }
 
     function distance(a, b) {
       return Math.hypot(a.x - b.x, a.y - b.y);
     }
 
-    // İki dikey ve bir yatay ölçümle göz açıklığı oranı.
-    function getEAR(points, upper1, lower1, upper2, lower2, left, right) {
-      const horizontal = distance(points[left], points[right]);
-      if (!horizontal || !Number.isFinite(horizontal)) return NaN;
+    function eyeRatio(points, upper1, lower1, upper2, lower2, left, right) {
+      const width = distance(points[left], points[right]);
+      if (!width) return NaN;
 
       return (
         distance(points[upper1], points[lower1]) +
         distance(points[upper2], points[lower2])
-      ) / (2 * horizontal);
+      ) / (2 * width);
     }
 
-    function resetFaceState() {
+    function updateVolume() {
+      const volume = Number(document.getElementById("volume").value);
+      audio.volume = volume / 100;
+      document.getElementById("volumeValue").textContent = volume + "%";
+    }
+
+    function stopAlarm() {
+      audio.pause();
+      try {
+        audio.currentTime = 0;
+      } catch (_) {}
+
+      alarmPlaying = false;
+      document.getElementById("alarmValue").textContent = "Kapalı";
+    }
+
+    async function startAlarm() {
+      if (alarmPlaying) return;
+
+      if (!audio.src) {
+        document.getElementById("alarmValue").textContent = "Ses seçilmedi";
+        setMessage("Alarm için önce kendi ses dosyanı seç.");
+        return;
+      }
+
+      try {
+        audio.volume = Number(document.getElementById("volume").value) / 100;
+        audio.currentTime = 0;
+        await audio.play();
+
+        alarmPlaying = true;
+        document.getElementById("alarmValue").textContent = "Aktif";
+        setStatus("Dikkat uyarısı", "#ef4444");
+        setMessage("Dikkat: Uzun veya tekrarlayan göz kapanması algılandı.");
+      } catch (error) {
+        setMessage("Ses başlatılamadı. Ses dosyasını tekrar seçip deneyin.");
+      }
+    }
+
+    function resetFace() {
       closedSince = null;
-      document.getElementById("face_value").textContent = "Bulunamadı";
-      document.getElementById("ear_value").textContent = "—";
-      document.getElementById("closed_value").textContent = "0.0 sn";
+      document.getElementById("faceValue").textContent = "Bulunamadı";
+      document.getElementById("eyeValue").textContent = "Belirsiz";
+      document.getElementById("closedValue").textContent = "0,0 sn";
       stopAlarm();
       setStatus("Yüz algılanamadı", "#f59e0b");
-      setMessage("Yüzünüzü kameraya dönün ve aydınlatmayı kontrol edin.");
+      setMessage("Yüzünü kameraya dön ve ışığı kontrol et.");
     }
 
     function onResults(results) {
       if (!running) return;
 
       const image = results.image;
+
       if (image && image.width && image.height) {
         if (canvas.width !== image.width || canvas.height !== image.height) {
           canvas.width = image.width;
           canvas.height = image.height;
         }
+
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
       }
 
       const faces = results.multiFaceLandmarks;
+
       if (!faces || faces.length === 0) {
-        resetFaceState();
+        resetFace();
         return;
       }
 
       const p = faces[0];
-      // MediaPipe Face Mesh göz çevresi noktaları.
-      const leftEAR = getEAR(p, 159, 145, 158, 153, 33, 133);
-      const rightEAR = getEAR(p, 386, 374, 385, 380, 362, 263);
-      const ear = (leftEAR + rightEAR) / 2;
 
-      if (!Number.isFinite(ear)) {
-        resetFaceState();
+      const left = eyeRatio(p, 159, 145, 158, 153, 33, 133);
+      const right = eyeRatio(p, 386, 374, 385, 380, 362, 263);
+      const eye = (left + right) / 2;
+
+      if (!Number.isFinite(eye)) {
+        resetFace();
         return;
       }
 
-      document.getElementById("face_value").textContent = "Algılandı";
-      document.getElementById("ear_value").textContent = ear.toFixed(3);
+      document.getElementById("faceValue").textContent = "Algılandı";
 
-      const limit = Number(threshold.value);
-      if (ear < limit) {
-        if (closedSince === null) closedSince = Date.now();
+      const now = Date.now();
+      const closed = eye < INTERNAL_EYE_THRESHOLD;
 
-        const elapsed = (Date.now() - closedSince) / 1000;
-        document.getElementById("closed_value").textContent =
-          elapsed.toFixed(1) + " sn";
+      if (closed) {
+        if (closedSince === null) {
+          closedSince = now;
+        }
 
-        if (elapsed >= alarmSeconds) {
-          setStatus("Uzun süre kapalı göz", "#ef4444");
-          setMessage("Dikkat: Gözler eşik değerinin altında ölçülüyor.");
+        const elapsed = now - closedSince;
+
+        document.getElementById("eyeValue").textContent =
+          "Kapalı olabilir";
+        document.getElementById("closedValue").textContent =
+          (elapsed / 1000).toFixed(1).replace(".", ",") + " sn";
+
+        setStatus("Göz kapanması izleniyor", "#f59e0b");
+
+        if (elapsed >= LONG_CLOSURE_MS &&
+            (longClosures.length === 0 ||
+             now - longClosures[longClosures.length - 1] > 1500)) {
+          longClosures.push(now);
+        }
+
+        // Son 30 saniyedeki uzun kapanmaları takip et.
+        longClosures = longClosures.filter(t => now - t < 30000);
+
+        // 2 saniyelik kesintisiz kapanma veya tekrarlayan uzun kapanma.
+        const prolonged = elapsed >= ALARM_DELAY_MS;
+        const repeated = longClosures.length >= 3;
+
+        if (prolonged || repeated) {
           startAlarm();
         } else {
-          setStatus("Gözler kapalı olabilir", "#f59e0b");
-          setMessage("Göz açıklığı ölçümü izleniyor.");
+          setMessage("Göz durumu izleniyor.");
         }
       } else {
         closedSince = null;
-        document.getElementById("closed_value").textContent = "0.0 sn";
+        document.getElementById("eyeValue").textContent = "Açık";
+        document.getElementById("closedValue").textContent = "0,0 sn";
+
+        if (alarmPlaying) {
+          stopAlarm();
+        }
+
         setStatus("Yüz algılandı", "#22c55e");
-        setMessage("Yüz ve göz açıklığı ölçümü devam ediyor.");
-        stopAlarm();
+        setMessage("Göz takibi devam ediyor.");
       }
     }
 
-    threshold.addEventListener("input", () => {
-      document.getElementById("threshold_value").textContent =
-        Number(threshold.value).toFixed(2);
+    document.getElementById("soundFile").addEventListener("change", event => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      if (!file.type.startsWith("audio/")) {
+        setMessage("Lütfen bir ses dosyası seç.");
+        event.target.value = "";
+        return;
+      }
+
+      stopAlarm();
+
+      if (soundUrl) {
+        URL.revokeObjectURL(soundUrl);
+      }
+
+      soundUrl = URL.createObjectURL(file);
+      audio.src = soundUrl;
+      audio.load();
+
+      document.getElementById("fileName").textContent =
+        "Seçilen dosya: " + file.name;
+
+      setMessage("Alarm sesin hazır. İstersen sesini deneyebilirsin.");
+      updateVolume();
     });
 
-    document.querySelectorAll(".tolerance").forEach(button => {
-      button.addEventListener("click", () => {
-        alarmSeconds = Number(button.dataset.seconds);
-        document.querySelectorAll(".tolerance").forEach(item => {
-          item.classList.remove("btn-primary");
-          item.classList.add("btn-secondary");
-        });
-        button.classList.remove("btn-secondary");
-        button.classList.add("btn-primary");
-      });
+    document.getElementById("volume").addEventListener("input", updateVolume);
+
+    document.getElementById("testSoundBtn").addEventListener("click", async () => {
+      if (!audio.src) {
+        setMessage("Önce kendi alarm sesini seç.");
+        return;
+      }
+
+      try {
+        updateVolume();
+        audio.currentTime = 0;
+        await audio.play();
+        alarmPlaying = true;
+        document.getElementById("alarmValue").textContent = "Test ediliyor";
+      } catch (error) {
+        setMessage("Ses çalınamadı. Dosyayı tekrar seçmeyi dene.");
+      }
+    });
+
+    audio.addEventListener("ended", () => {
+      alarmPlaying = false;
+      document.getElementById("alarmValue").textContent = "Kapalı";
     });
 
     async function startCamera() {
       if (running) return;
 
-      const startButton = document.getElementById("start_btn");
-      startButton.disabled = true;
-      setStatus("Kamera başlatılıyor", "#60a5fa");
+      startBtn.disabled = true;
+      setStatus("Başlatılıyor", "#60a5fa");
       setMessage("Kamera izni bekleniyor...");
 
       try {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          throw new Error("Bu tarayıcıda kamera erişimi kullanılamıyor.");
+        if (!navigator.mediaDevices ||
+            !navigator.mediaDevices.getUserMedia) {
+          throw new Error("Tarayıcı kamera erişimini desteklemiyor.");
         }
 
         faceMesh = new FaceMesh({
           locateFile: file =>
-            `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+            "https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/" + file
         });
 
         faceMesh.setOptions({
@@ -372,6 +603,7 @@
         camera = new Camera(video, {
           onFrame: async () => {
             if (!running || processing || video.readyState < 2) return;
+
             processing = true;
             try {
               await faceMesh.send({ image: video });
@@ -388,17 +620,19 @@
         running = true;
         await camera.start();
 
-        placeholder.style.display = "none";
-        document.getElementById("camera_label").textContent = "Kamera açık";
-        document.getElementById("stop_btn").disabled = false;
+        document.getElementById("placeholder").style.display = "none";
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+
         setStatus("Kamera aktif", "#22c55e");
         setMessage("Yüz algılanması bekleniyor.");
       } catch (error) {
         running = false;
-        startButton.disabled = false;
-        document.getElementById("stop_btn").disabled = true;
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+
         setStatus("Kamera açılamadı", "#ef4444");
-        setMessage(error.message || "Kamera başlatılamadı. İzinleri ve internet bağlantısını kontrol edin.");
+        setMessage(error.message || "Kamera başlatılamadı.");
         console.error(error);
       }
     }
@@ -406,11 +640,14 @@
     async function stopCamera() {
       running = false;
       closedSince = null;
+      longClosures = [];
       stopAlarm();
 
       if (camera) {
-        try { camera.stop(); } catch (error) {
-          console.warn("Kamera durdurma uyarısı:", error);
+        try {
+          camera.stop();
+        } catch (error) {
+          console.warn(error);
         }
         camera = null;
       }
@@ -421,32 +658,40 @@
       }
 
       if (faceMesh) {
-        try { await faceMesh.close(); } catch (error) {
-          console.warn("Face Mesh kapatma uyarısı:", error);
+        try {
+          await faceMesh.close();
+        } catch (error) {
+          console.warn(error);
         }
         faceMesh = null;
       }
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      placeholder.style.display = "flex";
-      document.getElementById("camera_label").textContent = "Kamera kapalı";
-      document.getElementById("start_btn").disabled = false;
-      document.getElementById("stop_btn").disabled = true;
-      document.getElementById("face_value").textContent = "Bekleniyor";
-      document.getElementById("ear_value").textContent = "—";
-      document.getElementById("closed_value").textContent = "0.0 sn";
+      document.getElementById("placeholder").style.display = "flex";
+
+      document.getElementById("faceValue").textContent = "Bekleniyor";
+      document.getElementById("eyeValue").textContent = "Bekleniyor";
+      document.getElementById("closedValue").textContent = "0,0 sn";
+
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+
       setStatus("Kamera kapalı", "#64748b");
       setMessage("Kamera durduruldu.");
     }
 
-    document.getElementById("start_btn").addEventListener("click", startCamera);
-    document.getElementById("stop_btn").addEventListener("click", stopCamera);
+    startBtn.addEventListener("click", startCamera);
+    stopBtn.addEventListener("click", stopCamera);
 
     window.addEventListener("beforeunload", () => {
       if (video.srcObject) {
         video.srcObject.getTracks().forEach(track => track.stop());
       }
+
+      if (soundUrl) URL.revokeObjectURL(soundUrl);
     });
+
+    updateVolume();
   </script>
 </body>
 </html>
