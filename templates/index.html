@@ -807,15 +807,6 @@ function handleFaceResults(results) {
 
   trackingValue.textContent = "Aktif";
 
-  // Gözlerin çevresine yaklaşık takip noktaları çiz.
-  [33, 133, 159, 145, 362, 263, 386, 374].forEach(index => {
-    const point = landmarks[index];
-    ctx.beginPath();
-    ctx.arc((1 - point.x) * canvas.width, point.y * canvas.height, 3, 0, Math.PI * 2);
-    ctx.fillStyle = eyesClosed ? "#ef476f" : "#19b887";
-    ctx.fill();
-  });
-
   if (eyesClosed) {
     if (closedSince === null) closedSince = Date.now();
 
